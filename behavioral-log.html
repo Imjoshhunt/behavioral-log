@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Behavioral Log">
+<meta name="application-name" content="Behavioral Log">
+<meta name="theme-color" content="#ffffff">
+<link rel="manifest" href="#" id="manifest-placeholder">
+<title>Behavioral Log</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: #f8fafc; min-height: 100vh; color: #1e293b; }
+  #app { max-width: 480px; margin: 0 auto; }
+
+  /* Header */
+  .header { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+  .header-title { font-family: 'Lora', serif; font-size: 20px; color: #0f172a; font-weight: 600; }
+  .header-sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+  .settings-btn { background: none; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 12px; color: #64748b; font-weight: 500; font-family: 'DM Sans', sans-serif; }
+
+  /* Calendar nav */
+  .cal-nav { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 8px; }
+  .month-label { font-family: 'Lora', serif; font-size: 18px; color: #0f172a; font-weight: 600; }
+  .nav-btn { background: none; border: none; font-size: 26px; cursor: pointer; color: #64748b; padding: 0 10px; line-height: 1; font-family: 'DM Sans', sans-serif; }
+
+  /* Day headers */
+  .day-headers { display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 8px; }
+  .day-header { text-align: center; font-size: 11px; font-weight: 600; color: #94a3b8; letter-spacing: 0.05em; padding: 4px 0; }
+
+  /* Grid */
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 8px 8px; gap: 3px; }
+  .empty-cell { aspect-ratio: 1; min-height: 50px; }
+  .cell { aspect-ratio: 1; min-height: 50px; border-radius: 10px; padding: 6px 4px 4px; cursor: pointer; display: flex; flex-direction: column; align-items: center; background: #fff; border: 1px solid #f1f5f9; transition: background 0.1s; }
+  .cell:hover { background: #f0f9ff; }
+  .cell.today { border: 1.5px solid #1e293b; }
+  .cell.selected { background: #f0f9ff; border: 1.5px solid #38bdf8; }
+  .day-num { font-size: 13px; font-weight: 500; color: #334155; line-height: 1; }
+  .cell.today .day-num { font-weight: 700; color: #0f172a; }
+  .dot-row { display: flex; gap: 2px; margin-top: 4px; flex-wrap: wrap; justify-content: center; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .env-dot-sm-cal { width: 6px; height: 6px; border-radius: 2px; background: #818cf8; flex-shrink: 0; }
+
+  /* Legend */
+  .legend { display: flex; gap: 10px; padding: 8px 16px 20px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #64748b; }
+  .legend-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .legend-env { width: 6px; height: 6px; border-radius: 2px; background: #818cf8; }
+
+  /* Overlay & Modal */
+  .overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.45); display: flex; align-items: flex-end; justify-content: center; z-index: 100; backdrop-filter: blur(2px); }
+  .overlay.hidden { display: none; }
+  .modal { background: #fff; border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; max-height: 88vh; overflow-y: auto; padding: 20px 18px 36px; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .modal-date { font-family: 'Lora', serif; font-size: 17px; color: #0f172a; font-weight: 600; }
+  .close-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #94a3b8; line-height: 1; font-family: 'DM Sans', sans-serif; }
+  .back-link { background: none; border: none; cursor: pointer; font-size: 13px; color: #64748b; padding: 0 0 12px; display: block; font-family: 'DM Sans', sans-serif; }
+
+  /* Section headers */
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .section-label { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: #334155; }
+  .section-add-btn { background: none; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; color: #64748b; font-family: 'DM Sans', sans-serif; }
+  .env-pill { background: #ede9fe; color: #7c3aed; font-size: 9px; font-weight: 800; border-radius: 4px; padding: 2px 6px; letter-spacing: 0.08em; }
+  .inc-pill { background: #fee2e2; color: #b91c1c; font-size: 9px; font-weight: 800; border-radius: 4px; padding: 2px 6px; letter-spacing: 0.08em; }
+  .notes-pill { background: #f0fdf4; color: #15803d; font-size: 9px; font-weight: 800; border-radius: 4px; padding: 2px 6px; letter-spacing: 0.08em; }
+  .empty-section { font-size: 12px; color: #cbd5e1; font-style: italic; padding: 4px 0 10px; }
+  .divider { border-top: 1px solid #f1f5f9; margin: 14px 0; }
+
+  /* Entry rows */
+  .entry-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f8fafc; cursor: pointer; }
+  .entry-row-left { display: flex; align-items: flex-start; gap: 10px; flex: 1; min-width: 0; }
+  .entry-child { font-size: 14px; font-weight: 600; color: #0f172a; }
+  .entry-snippet { font-size: 12px; color: #64748b; margin-top: 2px; }
+  .affected-tag { font-size: 11px; color: #6366f1; margin-top: 3px; font-weight: 500; }
+  .entry-arrow { font-size: 18px; color: #cbd5e1; flex-shrink: 0; }
+  .env-dot-sm { width: 10px; height: 10px; border-radius: 3px; background: #818cf8; flex-shrink: 0; margin-top: 2px; }
+  .inc-dot-sm { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 2px; }
+
+  /* Forms */
+  .form-section { margin-bottom: 14px; }
+  .field-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; margin-bottom: 6px; display: block; }
+  input[type="text"], input[type="number"], input[type="time"], select, textarea {
+    width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; padding: 9px 11px;
+    font-size: 14px; color: #1e293b; background: #f8fafc; outline: none;
+    font-family: 'DM Sans', sans-serif; box-sizing: border-box;
+  }
+  textarea { min-height: 72px; resize: vertical; }
+  .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip-wrap { display: flex; gap: 6px; flex-wrap: wrap; }
+  .child-chip { border: 1.5px solid #e2e8f0; border-radius: 20px; padding: 6px 16px; font-size: 13px; cursor: pointer; background: #f8fafc; color: #64748b; font-weight: 500; font-family: 'DM Sans', sans-serif; }
+  .child-chip.active { background: #1e293b; color: #fff; border-color: #1e293b; }
+  .small-chip { border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px 10px; font-size: 12px; cursor: pointer; background: #f8fafc; color: #64748b; font-family: 'DM Sans', sans-serif; }
+  .small-chip.active { background: #818cf8; color: #fff; border-color: #818cf8; }
+  .sev-chip { border: 1px solid #e2e8f0; border-radius: 8px; padding: 5px 10px; font-size: 11px; cursor: pointer; background: #f8fafc; color: #64748b; font-weight: 600; font-family: 'DM Sans', sans-serif; }
+  .primary-chip { border: 1.5px solid #e2e8f0; border-radius: 20px; padding: 6px 14px; font-size: 13px; cursor: pointer; background: #f8fafc; color: #64748b; font-weight: 500; font-family: 'DM Sans', sans-serif; }
+  .primary-chip.active { background: #6366f1; color: #fff; border-color: #6366f1; }
+  .no-children-hint { font-size: 12px; color: #94a3b8; font-style: italic; }
+  .severity-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+  .cancel-btn { background: none; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 13px; color: #64748b; font-family: 'DM Sans', sans-serif; }
+  .save-btn { background: #1e293b; color: #fff; border: none; border-radius: 8px; padding: 8px 18px; cursor: pointer; font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif; }
+  .save-btn.green { background: #0f766e; }
+  .save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .primary-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; margin-bottom: 6px; }
+  .primary-optional { font-size: 10px; font-weight: 400; color: #cbd5e1; text-transform: none; letter-spacing: 0; }
+
+  /* Detail view */
+  .detail-children { font-family: 'Lora', serif; font-size: 20px; font-weight: 600; color: #0f172a; }
+  .detail-time { font-size: 12px; color: #94a3b8; margin-bottom: 12px; }
+  .severity-badge { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 20px; padding: 3px 10px; margin-bottom: 14px; letter-spacing: 0.02em; }
+  .affected-badge { font-size: 12px; color: #6366f1; font-weight: 600; background: #eef2ff; border-radius: 6px; padding: 4px 10px; display: inline-block; margin-bottom: 12px; }
+  .d-field { margin-bottom: 14px; }
+  .d-field-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #94a3b8; margin-bottom: 4px; }
+  .d-field-value { font-size: 14px; color: #1e293b; line-height: 1.6; white-space: pre-wrap; }
+  .detail-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .edit-btn { flex: 1; background: none; border: 1px solid #e2e8f0; border-radius: 8px; padding: 9px; cursor: pointer; font-size: 13px; color: #334155; font-family: 'DM Sans', sans-serif; }
+  .delete-btn { flex: 1; background: none; border: 1px solid #fca5a5; border-radius: 8px; padding: 9px; cursor: pointer; font-size: 13px; color: #ef4444; font-family: 'DM Sans', sans-serif; }
+
+  /* Settings */
+  .settings-add-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+  .settings-add-box input, .settings-add-box select { margin-bottom: 8px; }
+  .settings-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .settings-row > div { flex: 1; }
+  .settings-row label { font-size: 11px; color: #94a3b8; display: block; margin-bottom: 4px; }
+  .child-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+  .child-row-name { font-size: 15px; font-weight: 600; color: #1e293b; }
+  .child-row-detail { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+  .remove-btn { background: none; border: none; cursor: pointer; font-size: 12px; color: #ef4444; font-family: 'DM Sans', sans-serif; flex-shrink: 0; }
+  .full-width { width: 100%; }
+
+  /* Export */
+  .export-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 8px 0 4px; }
+  .export-card { border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 16px 10px; cursor: pointer; text-align: center; background: #f8fafc; transition: border-color 0.15s, background 0.15s; }
+  .export-card:hover { border-color: #6366f1; background: #eef2ff; }
+  .export-card-icon { font-size: 26px; margin-bottom: 6px; }
+  .export-card-label { font-size: 13px; font-weight: 600; color: #334155; }
+  .export-card-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+  .export-note { font-size: 12px; color: #94a3b8; margin-top: 12px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div>
+      <div class="header-title">Behavioral Log</div>
+      <div class="header-sub" id="header-sub">0 incidents · 0 env. factors</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="settings-btn" onclick="openExport()">↓ Export</button>
+      <button class="settings-btn" onclick="openSettings()">⚙ Children</button>
+    </div>
+  </div>
+
+  <div class="cal-nav">
+    <button class="nav-btn" onclick="prevMonth()">‹</button>
+    <div class="month-label" id="month-label"></div>
+    <button class="nav-btn" onclick="nextMonth()">›</button>
+  </div>
+
+  <div class="day-headers" id="day-headers"></div>
+  <div class="grid" id="grid"></div>
+
+  <div class="legend" id="legend"></div>
+</div>
+
+<!-- DAY POPUP -->
+<div class="overlay hidden" id="overlay-day" onclick="closeDay()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-date" id="day-popup-date"></div>
+      <button class="close-btn" onclick="closeDay()">✕</button>
+    </div>
+    <div class="section-header">
+      <div class="section-label"><span class="env-pill">ENV</span> Environmental Factors</div>
+      <button class="section-add-btn" onclick="openAddEnv()">+ Add</button>
+    </div>
+    <div id="env-list"></div>
+    <div class="divider"></div>
+    <div class="section-header">
+      <div class="section-label"><span class="inc-pill">INC</span> Behavioral Incidents</div>
+      <button class="section-add-btn" onclick="openAddIncident()">+ Add</button>
+    </div>
+    <div id="incident-list"></div>
+    <div class="divider"></div>
+    <div class="section-header">
+      <div class="section-label"><span class="notes-pill">NOTE</span> General Notes</div>
+      <button class="section-add-btn" onclick="openAddNote()">+ Add</button>
+    </div>
+    <div id="notes-list"></div>
+  </div>
+</div>
+
+<!-- ADD ENV POPUP -->
+<div class="overlay hidden" id="overlay-add-env">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-date" id="add-env-title">Add Environmental Factor</div>
+      <button class="close-btn" onclick="closeAddEnv()">✕</button>
+    </div>
+    <div class="form-section">
+      <label class="field-label">Categories (select all that apply)</label>
+      <div class="chip-wrap" id="env-cat-chips"></div>
+    </div>
+    <div class="form-section">
+      <label class="field-label">Time</label>
+      <input type="time" id="env-time">
+    </div>
+    <div class="form-section">
+      <label class="field-label">Description *</label>
+      <textarea id="env-desc" placeholder="Describe the outside influence or environmental context…"></textarea>
+    </div>
+    <div class="form-section" id="env-primary-section">
+      <div class="primary-label">Primarily Affected <span class="primary-optional">(optional)</span></div>
+      <div class="chip-row" id="env-primary-chips"></div>
+    </div>
+    <div class="form-section">
+      <label class="field-label">Caregiver Action to Help</label>
+      <textarea id="env-caregiver" placeholder="What did you do to help support the child or children in this situation?"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="cancel-btn" onclick="closeAddEnv()">Cancel</button>
+      <button class="save-btn green" id="save-env-btn" onclick="saveEnv()">Log Factor</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD INCIDENT POPUP -->
+<div class="overlay hidden" id="overlay-add-incident">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-date" id="add-incident-title">Log Behavioral Incident</div>
+      <button class="close-btn" onclick="closeAddIncident()">✕</button>
+    </div>
+    <div class="form-section">
+      <label class="field-label">Involved Child or Children *</label>
+      <div class="chip-row" id="incident-child-chips"></div>
+    </div>
+    <div class="form-section">
+      <label class="field-label">Time</label>
+      <input type="time" id="inc-time">
+    </div>
+    <div class="form-section">
+      <label class="field-label">Incident Description *</label>
+      <textarea id="inc-incident" placeholder="What happened?"></textarea>
+    </div>
+    <div class="form-section">
+      <label class="field-label">Background / Trigger</label>
+      <textarea id="inc-trigger" placeholder="What preceded or triggered this?"></textarea>
+    </div>
+    <div class="form-section">
+      <label class="field-label">Severity</label>
+      <div class="severity-row" id="inc-severity-chips"></div>
+    </div>
+    <div class="form-section" id="inc-primary-section">
+      <div class="primary-label">Primarily Affected <span class="primary-optional">(optional)</span></div>
+      <div class="chip-row" id="inc-primary-chips"></div>
+    </div>
+    <div class="form-section">
+      <label class="field-label">Response / Intervention</label>
+      <textarea id="inc-response" placeholder="How did you respond?"></textarea>
+    </div>
+    <div class="form-section">
+      <label class="field-label">Outcome</label>
+      <textarea id="inc-outcome" placeholder="How did it resolve?"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="cancel-btn" onclick="closeAddIncident()">Cancel</button>
+      <button class="save-btn" id="save-inc-btn" onclick="saveIncident()">Log Incident</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL ENV POPUP -->
+<div class="overlay hidden" id="overlay-detail-env">
+  <div class="modal">
+    <div class="modal-header">
+      <button class="back-link" onclick="closeDetailEnv()">← Back</button>
+      <button class="close-btn" onclick="closeAll()">✕</button>
+    </div>
+    <div id="detail-env-content"></div>
+  </div>
+</div>
+
+<!-- DETAIL INCIDENT POPUP -->
+<div class="overlay hidden" id="overlay-detail-inc">
+  <div class="modal">
+    <div class="modal-header">
+      <button class="back-link" onclick="closeDetailInc()">← Back</button>
+      <button class="close-btn" onclick="closeAll()">✕</button>
+    </div>
+    <div id="detail-inc-content"></div>
+  </div>
+</div>
+
+<!-- ADD NOTE POPUP -->
+<div class="overlay hidden" id="overlay-add-note">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-date" id="add-note-title">Add General Note</div>
+      <button class="close-btn" onclick="closeAddNote()">✕</button>
+    </div>
+    <div class="form-section">
+      <label class="field-label">Time</label>
+      <input type="time" id="note-time">
+    </div>
+    <div class="form-section">
+      <label class="field-label">Note *</label>
+      <textarea id="note-text" placeholder="Write anything worth remembering about today…" style="min-height:120px"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="cancel-btn" onclick="closeAddNote()">Cancel</button>
+      <button class="save-btn" style="background:#15803d" id="save-note-btn" onclick="saveNote()">Save Note</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL NOTE POPUP -->
+<div class="overlay hidden" id="overlay-detail-note">
+  <div class="modal">
+    <div class="modal-header">
+      <button class="back-link" onclick="closeDetailNote()">← Back</button>
+      <button class="close-btn" onclick="closeAll()">✕</button>
+    </div>
+    <div id="detail-note-content"></div>
+  </div>
+</div>
+
+<!-- EXPORT POPUP -->
+<div class="overlay hidden" id="overlay-export" onclick="closeExport()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-date">Export Data</div>
+      <button class="close-btn" onclick="closeExport()">✕</button>
+    </div>
+    <div class="export-grid">
+      <div class="export-card" onclick="exportCSV()">
+        <div class="export-card-icon">📊</div>
+        <div class="export-card-label">CSV</div>
+        <div class="export-card-sub">Spreadsheet</div>
+      </div>
+      <div class="export-card" onclick="exportPDF()">
+        <div class="export-card-icon">📄</div>
+        <div class="export-card-label">PDF</div>
+        <div class="export-card-sub">Print / Save</div>
+      </div>
+      <div class="export-card" onclick="exportWord()">
+        <div class="export-card-icon">📝</div>
+        <div class="export-card-label">Word</div>
+        <div class="export-card-sub">.doc file</div>
+      </div>
+    </div>
+    <div class="export-note">All entries across all dates will be included, sorted by date. CSV opens in Excel or Google Sheets. PDF opens a print dialog. Word opens in Microsoft Word or Google Docs.</div>
+  </div>
+</div>
+
+<!-- SETTINGS POPUP -->
+<div class="overlay hidden" id="overlay-settings" onclick="closeSettings()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-date">Manage Children</div>
+      <button class="close-btn" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="settings-add-box">
+      <label class="field-label">Add a Child</label>
+      <input type="text" id="new-child-name" placeholder="Name…">
+      <div class="settings-row">
+        <div>
+          <label>Gender</label>
+          <select id="new-child-gender">
+            <option value="">Select…</option>
+            <option>Male</option><option>Female</option>
+          </select>
+        </div>
+        <div>
+          <label>Age</label>
+          <input type="number" id="new-child-age" min="0" max="25" placeholder="Age…">
+        </div>
+      </div>
+      <button class="save-btn full-width" onclick="addChild()">Add Child</button>
+    </div>
+    <div id="children-list"></div>
+  </div>
+</div>
+
+<script>
+const SEVERITY_LEVELS = ["1 - Mild","2 - Moderate","3 - Significant","4 - Severe"];
+const SEVERITY_COLORS = ["#4ade80","#facc15","#fb923c","#f87171"];
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const ENV_CATS = ["Public Setting","Disrupted Routine","Poor Sleep","Illness","Dietary","Social Stressor","Sensory Environment","Travel","Family Change","Other"];
+
+// State
+let incidents = JSON.parse(localStorage.getItem("bl_incidents") || "[]");
+let envFactors = JSON.parse(localStorage.getItem("bl_envfactors") || "[]");
+let children = JSON.parse(localStorage.getItem("bl_children") || "[]");
+let notes = JSON.parse(localStorage.getItem("bl_notes") || "[]");
+let viewYear = new Date().getFullYear();
+let viewMonth = new Date().getMonth();
+let selectedDate = null;
+
+// Edit state
+let editingIncidentId = null;
+let editingEnvId = null;
+let incFormChildren = [];
+let incFormSeverity = "";
+let incFormPrimary = [];
+let envFormCats = [];
+let envFormPrimary = [];
+
+function save() {
+  localStorage.setItem("bl_incidents", JSON.stringify(incidents));
+  localStorage.setItem("bl_envfactors", JSON.stringify(envFactors));
+  localStorage.setItem("bl_children", JSON.stringify(children));
+  localStorage.setItem("bl_notes", JSON.stringify(notes));
+}
+
+function toDateStr(y, m, d) {
+  return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+}
+function fmtDate(ds) {
+  const [y,m,d] = ds.split("-");
+  return `${MONTHS[parseInt(m)-1]} ${parseInt(d)}, ${y}`;
+}
+function sevColor(s) {
+  const i = SEVERITY_LEVELS.indexOf(s);
+  return i >= 0 ? SEVERITY_COLORS[i] : "#94a3b8";
+}
+function dayIncidents(ds) { return incidents.filter(e => e.date === ds); }
+function dayEnvs(ds) { return envFactors.filter(e => e.date === ds); }
+function nowTime() { return new Date().toTimeString().slice(0,5); }
+function esc(str) { return String(str || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+// ── RENDER ──
+function render() {
+  renderCalendar();
+  renderLegend();
+  updateSubtitle();
+}
+
+function updateSubtitle() {
+  document.getElementById("header-sub").textContent =
+    `${incidents.length} incident${incidents.length!==1?"s":""} · ${envFactors.length} env. factor${envFactors.length!==1?"s":""}`;
+}
+
+function renderLegend() {
+  const leg = document.getElementById("legend");
+  leg.innerHTML = SEVERITY_LEVELS.map((l,i) =>
+    `<div class="legend-item"><div class="legend-dot" style="background:${SEVERITY_COLORS[i]}"></div>${esc(l)}</div>`
+  ).join("") + `<div class="legend-item"><div class="legend-env"></div>Env. Factor</div><div class="legend-item"><div style="width:6px;height:6px;border-radius:50%;background:#86efac"></div>Note</div>`;
+}
+
+function renderCalendar() {
+  document.getElementById("month-label").textContent = `${MONTHS[viewMonth]} ${viewYear}`;
+  const dh = document.getElementById("day-headers");
+  dh.innerHTML = DAYS.map(d => `<div class="day-header">${d}</div>`).join("");
+
+  const today = new Date();
+  const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
+  const totalDays = new Date(viewYear, viewMonth+1, 0).getDate();
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+
+  let html = "";
+  for (let i = 0; i < firstDay; i++) html += `<div class="empty-cell"></div>`;
+  for (let d = 1; d <= totalDays; d++) {
+    const ds = toDateStr(viewYear, viewMonth, d);
+    const di = dayIncidents(ds);
+    const de = dayEnvs(ds);
+    const dn = notes.filter(n => n.date === ds);
+    const isToday = ds === todayStr;
+    const isSelected = ds === selectedDate;
+    const cls = ["cell", isToday?"today":"", isSelected?"selected":""].filter(Boolean).join(" ");
+    const dots = di.slice(0,2).map(e => `<div class="dot" style="background:${sevColor(e.severity)}"></div>`).join("");
+    const envDot = de.length > 0 ? `<div class="env-dot-sm-cal"></div>` : "";
+    const noteDot = dn.length > 0 ? `<div style="width:6px;height:6px;border-radius:50%;background:#86efac;flex-shrink:0"></div>` : "";
+    html += `<div class="${cls}" onclick="handleDayClick(${d})">
+      <div class="day-num">${d}</div>
+      <div class="dot-row">${dots}${envDot}${noteDot}</div>
+    </div>`;
+  }
+  document.getElementById("grid").innerHTML = html;
+}
+
+// ── DAY POPUP ──
+function handleDayClick(day) {
+  selectedDate = toDateStr(viewYear, viewMonth, day);
+  renderCalendar();
+  renderDayPopup();
+  document.getElementById("overlay-day").classList.remove("hidden");
+}
+
+function renderDayPopup() {
+  document.getElementById("day-popup-date").textContent = fmtDate(selectedDate);
+  const envs = dayEnvs(selectedDate);
+  const incs = dayIncidents(selectedDate);
+  const dayNotes = notes.filter(n => n.date === selectedDate);
+
+  document.getElementById("env-list").innerHTML = envs.length === 0
+    ? `<div class="empty-section">None logged</div>`
+    : envs.map(e => `
+      <div class="entry-row" onclick="openDetailEnv('${e.id}')">
+        <div class="entry-row-left">
+          <div class="env-dot-sm"></div>
+          <div style="min-width:0">
+            <div class="entry-child">${esc(e.categories&&e.categories.length?e.categories.join(", "):"Environmental Factor")}</div>
+            <div class="entry-snippet">${esc(e.description.slice(0,55))}${e.description.length>55?"…":""}</div>
+            ${e.primaryAffected&&e.primaryAffected.length?`<div class="affected-tag">Primarily: ${esc(e.primaryAffected.join(", "))}</div>`:""}
+          </div>
+        </div>
+        <div class="entry-arrow">›</div>
+      </div>`).join("");
+
+  document.getElementById("incident-list").innerHTML = incs.length === 0
+    ? `<div class="empty-section">None logged</div>`
+    : incs.map(e => `
+      <div class="entry-row" onclick="openDetailInc('${e.id}')">
+        <div class="entry-row-left">
+          <div class="inc-dot-sm" style="background:${sevColor(e.severity)}"></div>
+          <div style="min-width:0">
+            <div class="entry-child">${esc(e.children&&e.children.length?e.children.join(" & "):"—")}</div>
+            <div class="entry-snippet">${esc(e.incident.slice(0,55))}${e.incident.length>55?"…":""}</div>
+            ${e.primaryAffected&&e.primaryAffected.length?`<div class="affected-tag">Primarily: ${esc(e.primaryAffected.join(", "))}</div>`:""}
+          </div>
+        </div>
+        <div class="entry-arrow">›</div>
+      </div>`).join("");
+
+  document.getElementById("notes-list").innerHTML = dayNotes.length === 0
+    ? `<div class="empty-section">None logged</div>`
+    : dayNotes.map(n => `
+      <div class="entry-row" onclick="openDetailNote('${n.id}')">
+        <div class="entry-row-left">
+          <div style="width:10px;height:10px;border-radius:50%;background:#86efac;flex-shrink:0;margin-top:2px"></div>
+          <div style="min-width:0">
+            ${n.time ? `<div style="font-size:11px;color:#94a3b8;margin-bottom:2px">${esc(n.time)}</div>` : ""}
+            <div class="entry-snippet" style="color:#334155">${esc(n.text.slice(0,70))}${n.text.length>70?"…":""}</div>
+          </div>
+        </div>
+        <div class="entry-arrow">›</div>
+      </div>`).join("");
+}
+
+function closeDay() {
+  document.getElementById("overlay-day").classList.add("hidden");
+  selectedDate = null;
+  renderCalendar();
+}
+function closeAll() {
+  ["overlay-day","overlay-add-env","overlay-add-incident","overlay-detail-env","overlay-detail-inc","overlay-add-note","overlay-detail-note","overlay-settings","overlay-export"]
+    .forEach(id => document.getElementById(id).classList.add("hidden"));
+  selectedDate = null;
+  renderCalendar();
+}
+
+// ── ADD ENV ──
+function openAddEnv(envId) {
+  editingEnvId = envId || null;
+  let entry = envId ? envFactors.find(e=>e.id==envId) : null;
+  envFormCats = entry ? [...(entry.categories||[])] : [];
+  envFormPrimary = entry ? [...(entry.primaryAffected||[])] : [];
+
+  document.getElementById("add-env-title").textContent = envId ? "Edit Factor" : "Add Environmental Factor";
+  document.getElementById("env-time").value = entry ? entry.time : nowTime();
+  document.getElementById("env-desc").value = entry ? entry.description : "";
+  document.getElementById("env-caregiver").value = entry ? (entry.caregiverAction||"") : "";
+
+  // Category chips
+  document.getElementById("env-cat-chips").innerHTML = ENV_CATS.map(c =>
+    `<button class="small-chip${envFormCats.includes(c)?" active":""}" onclick="toggleEnvCat('${esc(c)}')">${esc(c)}</button>`
+  ).join("");
+
+  // Primary chips
+  renderEnvPrimaryChips();
+
+  document.getElementById("overlay-day").classList.add("hidden");
+  document.getElementById("overlay-add-env").classList.remove("hidden");
+}
+
+function toggleEnvCat(c) {
+  if (envFormCats.includes(c)) envFormCats = envFormCats.filter(x=>x!==c);
+  else envFormCats.push(c);
+  document.querySelectorAll("#env-cat-chips .small-chip").forEach(btn => {
+    btn.classList.toggle("active", envFormCats.includes(btn.textContent));
+  });
+}
+
+function renderEnvPrimaryChips() {
+  const sec = document.getElementById("env-primary-section");
+  if (children.length === 0) { sec.innerHTML = `<div class="primary-label">Primarily Affected <span class="primary-optional">(optional)</span></div><span class="no-children-hint">Add children in ⚙ Children first</span>`; return; }
+  sec.innerHTML = `<div class="primary-label">Primarily Affected <span class="primary-optional">(optional)</span></div>
+    <div class="chip-row" id="env-primary-chips">
+      ${children.map(c=>`<button class="primary-chip${envFormPrimary.includes(c.name)?" active":""}" onclick="toggleEnvPrimary('${esc(c.name)}')">${esc(c.name)}</button>`).join("")}
+    </div>`;
+}
+
+function toggleEnvPrimary(name) {
+  if (envFormPrimary.includes(name)) envFormPrimary = envFormPrimary.filter(n=>n!==name);
+  else envFormPrimary.push(name);
+  document.querySelectorAll("#env-primary-chips .primary-chip").forEach(btn => {
+    btn.classList.toggle("active", envFormPrimary.includes(btn.textContent));
+  });
+}
+
+function saveEnv() {
+  const desc = document.getElementById("env-desc").value.trim();
+  if (!desc) return;
+  const entry = {
+    id: editingEnvId || Date.now(),
+    date: selectedDate,
+    categories: [...envFormCats],
+    time: document.getElementById("env-time").value,
+    description: desc,
+    primaryAffected: [...envFormPrimary],
+    caregiverAction: document.getElementById("env-caregiver").value.trim(),
+  };
+  if (editingEnvId) envFactors = envFactors.map(e=>e.id==editingEnvId?entry:e);
+  else envFactors.unshift(entry);
+  save(); updateSubtitle();
+  closeAddEnv();
+  renderDayPopup();
+  document.getElementById("overlay-day").classList.remove("hidden");
+}
+
+function closeAddEnv() {
+  document.getElementById("overlay-add-env").classList.add("hidden");
+  editingEnvId = null;
+}
+
+// ── ADD INCIDENT ──
+function openAddIncident(incId) {
+  editingIncidentId = incId || null;
+  let entry = incId ? incidents.find(e=>e.id==incId) : null;
+  incFormChildren = entry ? [...(entry.children||[])] : [];
+  incFormSeverity = entry ? (entry.severity||"") : "";
+  incFormPrimary = entry ? [...(entry.primaryAffected||[])] : [];
+
+  document.getElementById("add-incident-title").textContent = incId ? "Edit Incident" : "Log Behavioral Incident";
+  document.getElementById("inc-time").value = entry ? entry.time : nowTime();
+  document.getElementById("inc-incident").value = entry ? entry.incident : "";
+  document.getElementById("inc-trigger").value = entry ? (entry.trigger||"") : "";
+  document.getElementById("inc-response").value = entry ? (entry.response||"") : "";
+  document.getElementById("inc-outcome").value = entry ? (entry.outcome||"") : "";
+
+  renderIncidentChildChips();
+  renderIncidentSeverityChips();
+  renderIncidentPrimaryChips();
+
+  document.getElementById("overlay-day").classList.add("hidden");
+  document.getElementById("overlay-add-incident").classList.remove("hidden");
+}
+
+function renderIncidentChildChips() {
+  document.getElementById("incident-child-chips").innerHTML = children.length === 0
+    ? `<span class="no-children-hint">Add children in ⚙ Children first</span>`
+    : children.map(c=>
+        `<button class="child-chip${incFormChildren.includes(c.name)?" active":""}" onclick="toggleIncChild('${esc(c.name)}')">${esc(c.name)}</button>`
+      ).join("");
+}
+
+function toggleIncChild(name) {
+  if (incFormChildren.includes(name)) incFormChildren = incFormChildren.filter(n=>n!==name);
+  else incFormChildren.push(name);
+  document.querySelectorAll("#incident-child-chips .child-chip").forEach(btn => {
+    btn.classList.toggle("active", incFormChildren.includes(btn.textContent));
+  });
+}
+
+function renderIncidentSeverityChips() {
+  document.getElementById("inc-severity-chips").innerHTML = SEVERITY_LEVELS.map((sev,i)=>
+    `<button class="sev-chip" style="${incFormSeverity===sev?`background:${SEVERITY_COLORS[i]};color:#fff;border-color:${SEVERITY_COLORS[i]}`:""}" onclick="selectSeverity('${esc(sev)}')">${esc(sev)}</button>`
+  ).join("");
+}
+
+function selectSeverity(sev) {
+  incFormSeverity = sev;
+  renderIncidentSeverityChips();
+}
+
+function renderIncidentPrimaryChips() {
+  const sec = document.getElementById("inc-primary-section");
+  if (children.length === 0) { sec.innerHTML = `<div class="primary-label">Primarily Affected <span class="primary-optional">(optional)</span></div><span class="no-children-hint">Add children in ⚙ Children first</span>`; return; }
+  sec.innerHTML = `<div class="primary-label">Primarily Affected <span class="primary-optional">(optional)</span></div>
+    <div class="chip-row" id="inc-primary-chips">
+      ${children.map(c=>`<button class="primary-chip${incFormPrimary.includes(c.name)?" active":""}" onclick="toggleIncPrimary('${esc(c.name)}')">${esc(c.name)}</button>`).join("")}
+    </div>`;
+}
+
+function toggleIncPrimary(name) {
+  if (incFormPrimary.includes(name)) incFormPrimary = incFormPrimary.filter(n=>n!==name);
+  else incFormPrimary.push(name);
+  document.querySelectorAll("#inc-primary-chips .primary-chip").forEach(btn => {
+    btn.classList.toggle("active", incFormPrimary.includes(btn.textContent));
+  });
+}
+
+function saveIncident() {
+  const incident = document.getElementById("inc-incident").value.trim();
+  if (!incFormChildren.length || !incident) return;
+  const entry = {
+    id: editingIncidentId || Date.now(),
+    date: selectedDate,
+    children: [...incFormChildren],
+    time: document.getElementById("inc-time").value,
+    incident,
+    trigger: document.getElementById("inc-trigger").value.trim(),
+    severity: incFormSeverity,
+    primaryAffected: [...incFormPrimary],
+    response: document.getElementById("inc-response").value.trim(),
+    outcome: document.getElementById("inc-outcome").value.trim(),
+  };
+  if (editingIncidentId) incidents = incidents.map(e=>e.id==editingIncidentId?entry:e);
+  else incidents.unshift(entry);
+  save(); updateSubtitle();
+  closeAddIncident();
+  renderDayPopup();
+  document.getElementById("overlay-day").classList.remove("hidden");
+}
+
+function closeAddIncident() {
+  document.getElementById("overlay-add-incident").classList.add("hidden");
+  editingIncidentId = null;
+}
+
+// ── DETAIL ENV ──
+function openDetailEnv(id) {
+  const entry = envFactors.find(e=>e.id==id);
+  if (!entry) return;
+  document.getElementById("detail-env-content").innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <span class="env-pill">ENV</span>
+      <div class="detail-children">${esc(entry.categories&&entry.categories.length?entry.categories.join(", "):"Environmental Factor")}</div>
+    </div>
+    ${entry.time?`<div class="detail-time">${esc(fmtDate(entry.date))} at ${esc(entry.time)}</div>`:""}
+    ${entry.primaryAffected&&entry.primaryAffected.length?`<div class="affected-badge">Primarily affected: ${esc(entry.primaryAffected.join(", "))}</div>`:""}
+    ${dfield("Description", entry.description)}
+    ${dfield("Caregiver Action to Help", entry.caregiverAction)}
+    <div class="detail-actions">
+      <button class="edit-btn" onclick="editEnv('${id}')">Edit</button>
+      <button class="delete-btn" onclick="deleteEnv('${id}')">Delete</button>
+    </div>`;
+  document.getElementById("overlay-day").classList.add("hidden");
+  document.getElementById("overlay-detail-env").classList.remove("hidden");
+}
+
+function editEnv(id) {
+  document.getElementById("overlay-detail-env").classList.add("hidden");
+  openAddEnv(id);
+}
+
+function deleteEnv(id) {
+  if (!confirm("Delete this environmental factor?")) return;
+  envFactors = envFactors.filter(e=>e.id!=id);
+  save(); updateSubtitle();
+  document.getElementById("overlay-detail-env").classList.add("hidden");
+  renderDayPopup();
+  document.getElementById("overlay-day").classList.remove("hidden");
+}
+
+function closeDetailEnv() {
+  document.getElementById("overlay-detail-env").classList.add("hidden");
+  document.getElementById("overlay-day").classList.remove("hidden");
+}
+
+// ── DETAIL INCIDENT ──
+function openDetailInc(id) {
+  const entry = incidents.find(e=>e.id==id);
+  if (!entry) return;
+  const sc = sevColor(entry.severity);
+  document.getElementById("detail-inc-content").innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <span class="inc-pill">INC</span>
+      <div class="detail-children">${esc(entry.children&&entry.children.length?entry.children.join(" & "):"—")}</div>
+    </div>
+    ${entry.time?`<div class="detail-time">${esc(fmtDate(entry.date))} at ${esc(entry.time)}</div>`:""}
+    ${entry.primaryAffected&&entry.primaryAffected.length?`<div class="affected-badge">Primarily affected: ${esc(entry.primaryAffected.join(", "))}</div>`:""}
+    ${entry.severity?`<div class="severity-badge" style="background:${sc}22;color:${sc};border:1px solid ${sc}55">${esc(entry.severity)}</div>`:""}
+    ${dfield("Incident", entry.incident)}
+    ${dfield("Background / Trigger", entry.trigger)}
+    ${dfield("Response", entry.response)}
+    ${dfield("Outcome", entry.outcome)}
+    <div class="detail-actions">
+      <button class="edit-btn" onclick="editInc('${id}')">Edit</button>
+      <button class="delete-btn" onclick="deleteInc('${id}')">Delete</button>
+    </div>`;
+  document.getElementById("overlay-day").classList.add("hidden");
+  document.getElementById("overlay-detail-inc").classList.remove("hidden");
+}
+
+function editInc(id) {
+  document.getElementById("overlay-detail-inc").classList.add("hidden");
+  openAddIncident(id);
+}
+
+function deleteInc(id) {
+  if (!confirm("Delete this incident?")) return;
+  incidents = incidents.filter(e=>e.id!=id);
+  save(); updateSubtitle();
+  document.getElementById("overlay-detail-inc").classList.add("hidden");
+  renderDayPopup();
+  document.getElementById("overlay-day").classList.remove("hidden");
+}
+
+function closeDetailInc() {
+  document.getElementById("overlay-detail-inc").classList.add("hidden");
+  document.getElementById("overlay-day").classList.remove("hidden");
+}
+
+function dfield(label, value) {
+  if (!value) return "";
+  return `<div class="d-field"><div class="d-field-label">${esc(label)}</div><div class="d-field-value">${esc(value)}</div></div>`;
+}
+
+// ── SETTINGS ──
+function openSettings() {
+  renderChildrenList();
+  document.getElementById("overlay-settings").classList.remove("hidden");
+}
+
+function closeSettings() {
+  document.getElementById("overlay-settings").classList.add("hidden");
+}
+
+function addChild() {
+  const name = document.getElementById("new-child-name").value.trim();
+  if (!name) return;
+  children.push({
+    id: Date.now(),
+    name,
+    gender: document.getElementById("new-child-gender").value,
+    age: document.getElementById("new-child-age").value,
+  });
+  document.getElementById("new-child-name").value = "";
+  document.getElementById("new-child-gender").value = "";
+  document.getElementById("new-child-age").value = "";
+  save();
+  renderChildrenList();
+}
+
+function removeChild(id) {
+  children = children.filter(c=>c.id!=id);
+  save();
+  renderChildrenList();
+}
+
+function renderChildrenList() {
+  document.getElementById("children-list").innerHTML = children.length === 0
+    ? `<div style="color:#94a3b8;font-size:13px;text-align:center;padding:12px 0">No children added yet.</div>`
+    : children.map(c => `
+      <div class="child-row">
+        <div>
+          <div class="child-row-name">${esc(c.name)}</div>
+          <div class="child-row-detail">${[c.gender, c.age?`Age ${c.age}`:null].filter(Boolean).join(" · ")||"No details"}</div>
+        </div>
+        <button class="remove-btn" onclick="removeChild(${c.id})">Remove</button>
+      </div>`).join("");
+}
+
+// ── NOTES ──
+let editingNoteId = null;
+
+function openAddNote(noteId) {
+  editingNoteId = noteId || null;
+  const entry = noteId ? notes.find(n => n.id == noteId) : null;
+  document.getElementById("add-note-title").textContent = noteId ? "Edit Note" : "Add General Note";
+  document.getElementById("note-time").value = entry ? entry.time : nowTime();
+  document.getElementById("note-text").value = entry ? entry.text : "";
+  document.getElementById("overlay-day").classList.add("hidden");
+  document.getElementById("overlay-add-note").classList.remove("hidden");
+}
+
+function saveNote() {
+  const text = document.getElementById("note-text").value.trim();
+  if (!text) return;
+  const entry = {
+    id: editingNoteId || Date.now(),
+    date: selectedDate,
+    time: document.getElementById("note-time").value,
+    text,
+  };
+  if (editingNoteId) notes = notes.map(n => n.id == editingNoteId ? entry : n);
+  else notes.unshift(entry);
+  editingNoteId = null;
+  save();
+  closeAddNote();
+  renderDayPopup();
+  document.getElementById("overlay-day").classList.remove("hidden");
+}
+
+function closeAddNote() {
+  document.getElementById("overlay-add-note").classList.add("hidden");
+  editingNoteId = null;
+}
+
+function openDetailNote(id) {
+  const n = notes.find(n => n.id == id);
+  if (!n) return;
+  document.getElementById("detail-note-content").innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <span class="notes-pill">NOTE</span>
+      <div class="detail-children">General Note</div>
+    </div>
+    ${n.time ? `<div class="detail-time">${esc(fmtDate(n.date))} at ${esc(n.time)}</div>` : ""}
+    <div class="d-field"><div class="d-field-value">${esc(n.text)}</div></div>
+    <div class="detail-actions">
+      <button class="edit-btn" onclick="editNote('${id}')">Edit</button>
+      <button class="delete-btn" onclick="deleteNote('${id}')">Delete</button>
+    </div>`;
+  document.getElementById("overlay-day").classList.add("hidden");
+  document.getElementById("overlay-detail-note").classList.remove("hidden");
+}
+
+function editNote(id) {
+  document.getElementById("overlay-detail-note").classList.add("hidden");
+  openAddNote(id);
+}
+
+function deleteNote(id) {
+  if (!confirm("Delete this note?")) return;
+  notes = notes.filter(n => n.id != id);
+  save();
+  document.getElementById("overlay-detail-note").classList.add("hidden");
+  renderDayPopup();
+  document.getElementById("overlay-day").classList.remove("hidden");
+}
+
+function closeDetailNote() {
+  document.getElementById("overlay-detail-note").classList.add("hidden");
+  document.getElementById("overlay-day").classList.remove("hidden");
+}
+
+// ── EXPORT ──
+function openExport() {
+  document.getElementById("overlay-export").classList.remove("hidden");
+}
+function closeExport() {
+  document.getElementById("overlay-export").classList.add("hidden");
+}
+
+function allEntriesSorted() {
+  const allDates = [...new Set([
+    ...incidents.map(e => e.date),
+    ...envFactors.map(e => e.date),
+    ...notes.map(n => n.date)
+  ])].sort();
+  return allDates;
+}
+
+function exportCSV() {
+  const rows = [];
+  // Header
+  rows.push(["Date","Type","Child(ren)","Primarily Affected","Categories","Time","Description / Incident / Note","Trigger","Severity","Response / Caregiver Action","Outcome"]);
+
+  const dates = allEntriesSorted();
+  for (const date of dates) {
+    for (const e of envFactors.filter(x => x.date === date)) {
+      rows.push([date,"Environmental Factor","",(e.primaryAffected||[]).join("; "),(e.categories||[]).join("; "),e.time||"",e.description||"","","",e.caregiverAction||",",""]);
+    }
+    for (const e of incidents.filter(x => x.date === date)) {
+      rows.push([date,"Behavioral Incident",(e.children||[]).join("; "),(e.primaryAffected||[]).join("; "),"",e.time||"",e.incident||"",e.trigger||"",e.severity||"",e.response||"",e.outcome||""]);
+    }
+    for (const n of notes.filter(x => x.date === date)) {
+      rows.push([date,"General Note","","","",n.time||"",n.text||"","","","",""]);
+    }
+  }
+
+  const csv = rows.map(r =>
+    r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(",")
+  ).join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `behavioral-log-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  closeExport();
+}
+
+function exportPDF() {
+  const dates = allEntriesSorted();
+  let html = `
+    <html><head><title>Behavioral Log</title>
+    <style>
+      body { font-family: Georgia, serif; max-width: 700px; margin: 40px auto; color: #1e293b; }
+      h1 { font-size: 24px; margin-bottom: 4px; }
+      .sub { font-size: 13px; color: #64748b; margin-bottom: 32px; }
+      .date-block { margin-bottom: 28px; }
+      .date-heading { font-size: 16px; font-weight: bold; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 12px; }
+      .entry { margin-bottom: 14px; padding: 12px; border-radius: 6px; }
+      .entry.env { background: #f5f3ff; border-left: 4px solid #818cf8; }
+      .entry.inc { background: #fff8f8; border-left: 4px solid #f87171; }
+      .entry-type { font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+      .entry.env .entry-type { color: #7c3aed; }
+      .entry.inc .entry-type { color: #b91c1c; }
+      .entry-title { font-size: 15px; font-weight: bold; margin-bottom: 6px; }
+      .field { margin-bottom: 6px; }
+      .field-label { font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; }
+      .field-value { font-size: 13px; color: #1e293b; }
+      .badge { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 4px; padding: 2px 8px; margin-bottom: 6px; }
+      @media print { body { margin: 20px; } }
+    </style></head><body>
+    <h1>Behavioral Log</h1>
+    <div class="sub">Exported ${new Date().toLocaleDateString()} · ${incidents.length} incidents · ${envFactors.length} environmental factors</div>
+  `;
+
+  if (dates.length === 0) {
+    html += `<p style="color:#94a3b8;font-style:italic">No entries recorded yet.</p>`;
+  }
+
+  for (const date of dates) {
+    const envs = envFactors.filter(e => e.date === date);
+    const incs = incidents.filter(e => e.date === date);
+    const pdfNotes = notes.filter(n => n.date === date);
+    if (!envs.length && !incs.length && !pdfNotes.length) continue;
+
+    html += `<div class="date-block"><div class="date-heading">${fmtDate(date)}</div>`;
+
+    for (const e of envs) {
+      html += `<div class="entry env">
+        <div class="entry-type">Environmental Factor</div>
+        <div class="entry-title">${esc(e.categories&&e.categories.length ? e.categories.join(", ") : "Environmental Factor")}</div>
+        ${e.time ? `<div class="field"><span class="field-label">Time</span><div class="field-value">${esc(e.time)}</div></div>` : ""}
+        ${e.primaryAffected&&e.primaryAffected.length ? `<div class="badge" style="background:#eef2ff;color:#6366f1">Primarily: ${esc(e.primaryAffected.join(", "))}</div>` : ""}
+        ${e.description ? `<div class="field"><span class="field-label">Description</span><div class="field-value">${esc(e.description)}</div></div>` : ""}
+        ${e.caregiverAction ? `<div class="field"><span class="field-label">Caregiver Action</span><div class="field-value">${esc(e.caregiverAction)}</div></div>` : ""}
+      </div>`;
+    }
+
+    for (const e of incs) {
+      const sc = sevColor(e.severity);
+      html += `<div class="entry inc">
+        <div class="entry-type">Behavioral Incident</div>
+        <div class="entry-title">${esc(e.children&&e.children.length ? e.children.join(" & ") : "—")}</div>
+        ${e.time ? `<div class="field"><span class="field-label">Time</span><div class="field-value">${esc(e.time)}</div></div>` : ""}
+        ${e.severity ? `<div class="badge" style="background:${sc}22;color:${sc};border:1px solid ${sc}55">${esc(e.severity)}</div>` : ""}
+        ${e.primaryAffected&&e.primaryAffected.length ? `<div class="badge" style="background:#eef2ff;color:#6366f1;margin-left:6px">Primarily: ${esc(e.primaryAffected.join(", "))}</div>` : ""}
+        ${e.incident ? `<div class="field"><span class="field-label">Incident</span><div class="field-value">${esc(e.incident)}</div></div>` : ""}
+        ${e.trigger ? `<div class="field"><span class="field-label">Trigger</span><div class="field-value">${esc(e.trigger)}</div></div>` : ""}
+        ${e.response ? `<div class="field"><span class="field-label">Response</span><div class="field-value">${esc(e.response)}</div></div>` : ""}
+        ${e.outcome ? `<div class="field"><span class="field-label">Outcome</span><div class="field-value">${esc(e.outcome)}</div></div>` : ""}
+      </div>`;
+    }
+
+    for (const n of pdfNotes) {
+      html += `<div class="entry" style="background:#f0fdf4;border-left:4px solid #86efac">
+        <div class="entry-type" style="color:#15803d">General Note</div>
+        ${n.time ? `<div class="field"><span class="field-label">Time</span><div class="field-value">${esc(n.time)}</div></div>` : ""}
+        <div class="field"><div class="field-value">${esc(n.text)}</div></div>
+      </div>`;
+    }
+
+    html += `</div>`;
+  }
+
+  html += `</body></html>`;
+
+  const win = window.open("", "_blank");
+  win.document.write(html);
+  win.document.close();
+  win.onload = () => { win.focus(); win.print(); };
+  closeExport();
+}
+
+function exportWord() {
+  const dates = allEntriesSorted();
+  let html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+  <head><meta charset='utf-8'><title>Behavioral Log</title>
+  <style>
+    body { font-family: Calibri, sans-serif; margin: 1in; color: #1e293b; }
+    h1 { font-size: 22pt; margin-bottom: 4pt; }
+    .sub { font-size: 10pt; color: #64748b; margin-bottom: 24pt; }
+    h2 { font-size: 13pt; border-bottom: 1pt solid #e2e8f0; padding-bottom: 3pt; margin-top: 20pt; margin-bottom: 8pt; }
+    .entry { margin-bottom: 12pt; padding: 8pt; }
+    .entry.env { background: #f5f3ff; }
+    .entry.inc { background: #fff8f8; }
+    .entry-type { font-size: 8pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1pt; }
+    .env .entry-type { color: #7c3aed; }
+    .inc .entry-type { color: #b91c1c; }
+    .entry-title { font-size: 13pt; font-weight: bold; margin: 3pt 0 6pt; }
+    .field-label { font-size: 8pt; font-weight: bold; text-transform: uppercase; color: #94a3b8; }
+    .field-value { font-size: 11pt; margin-bottom: 5pt; }
+  </style></head><body>
+  <h1>Behavioral Log</h1>
+  <div class="sub">Exported ${new Date().toLocaleDateString()} &bull; ${incidents.length} incidents &bull; ${envFactors.length} environmental factors</div>`;
+
+  if (dates.length === 0) {
+    html += `<p style="color:#94a3b8;font-style:italic">No entries recorded yet.</p>`;
+  }
+
+  for (const date of dates) {
+    const envs = envFactors.filter(e => e.date === date);
+    const incs = incidents.filter(e => e.date === date);
+    if (!envs.length && !incs.length) continue;
+
+    html += `<h2>${fmtDate(date)}</h2>`;
+
+    for (const e of envs) {
+      html += `<div class="entry env">
+        <div class="entry-type">Environmental Factor</div>
+        <div class="entry-title">${esc(e.categories&&e.categories.length ? e.categories.join(", ") : "Environmental Factor")}</div>
+        ${e.time ? `<div class="field-label">Time</div><div class="field-value">${esc(e.time)}</div>` : ""}
+        ${e.primaryAffected&&e.primaryAffected.length ? `<div class="field-label">Primarily Affected</div><div class="field-value">${esc(e.primaryAffected.join(", "))}</div>` : ""}
+        ${e.description ? `<div class="field-label">Description</div><div class="field-value">${esc(e.description)}</div>` : ""}
+        ${e.caregiverAction ? `<div class="field-label">Caregiver Action</div><div class="field-value">${esc(e.caregiverAction)}</div>` : ""}
+      </div>`;
+    }
+
+    for (const e of incs) {
+      html += `<div class="entry inc">
+        <div class="entry-type">Behavioral Incident</div>
+        <div class="entry-title">${esc(e.children&&e.children.length ? e.children.join(" & ") : "—")}</div>
+        ${e.time ? `<div class="field-label">Time</div><div class="field-value">${esc(e.time)}</div>` : ""}
+        ${e.severity ? `<div class="field-label">Severity</div><div class="field-value">${esc(e.severity)}</div>` : ""}
+        ${e.primaryAffected&&e.primaryAffected.length ? `<div class="field-label">Primarily Affected</div><div class="field-value">${esc(e.primaryAffected.join(", "))}</div>` : ""}
+        ${e.incident ? `<div class="field-label">Incident</div><div class="field-value">${esc(e.incident)}</div>` : ""}
+        ${e.trigger ? `<div class="field-label">Trigger</div><div class="field-value">${esc(e.trigger)}</div>` : ""}
+        ${e.response ? `<div class="field-label">Response</div><div class="field-value">${esc(e.response)}</div>` : ""}
+        ${e.outcome ? `<div class="field-label">Outcome</div><div class="field-value">${esc(e.outcome)}</div>` : ""}
+      </div>`;
+    }
+
+    for (const n of notes.filter(x => x.date === date)) {
+      html += `<div class="entry" style="background:#f0fdf4">
+        <div class="entry-type" style="color:#15803d">General Note</div>
+        ${n.time ? `<div class="field-label">Time</div><div class="field-value">${esc(n.time)}</div>` : ""}
+        <div class="field-value">${esc(n.text)}</div>
+      </div>`;
+    }
+  }
+
+  html += `</body></html>`;
+
+  const blob = new Blob(['\ufeff', html], { type: "application/msword" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `behavioral-log-${new Date().toISOString().slice(0,10)}.doc`;
+  a.click();
+  URL.revokeObjectURL(url);
+  closeExport();
+}
+
+// ── MONTH NAV ──
+function prevMonth() {
+  if (viewMonth === 0) { viewMonth = 11; viewYear--; }
+  else viewMonth--;
+  selectedDate = null;
+  renderCalendar();
+}
+function nextMonth() {
+  if (viewMonth === 11) { viewMonth = 0; viewYear++; }
+  else viewMonth++;
+  selectedDate = null;
+  renderCalendar();
+}
+
+// Init
+render();
+
+// ── PWA SETUP ──
+// Inject manifest dynamically so it works as a single file
+const manifest = {
+  name: "Behavioral Log",
+  short_name: "BehaviorLog",
+  description: "Track behavioral incidents and environmental factors for children",
+  start_url: "./",
+  display: "standalone",
+  background_color: "#f8fafc",
+  theme_color: "#ffffff",
+  orientation: "portrait",
+  icons: [
+    {
+      src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='32' fill='%231e293b'/%3E%3Ctext x='96' y='130' font-size='100' text-anchor='middle' fill='white'%3E📋%3C/text%3E%3C/svg%3E",
+      sizes: "192x192",
+      type: "image/svg+xml"
+    },
+    {
+      src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%231e293b'/%3E%3Ctext x='256' y='340' font-size='260' text-anchor='middle' fill='white'%3E📋%3C/text%3E%3C/svg%3E",
+      sizes: "512x512",
+      type: "image/svg+xml"
+    }
+  ]
+};
+const manifestBlob = new Blob([JSON.stringify(manifest)], { type: "application/json" });
+const manifestURL = URL.createObjectURL(manifestBlob);
+document.getElementById("manifest-placeholder").setAttribute("href", manifestURL);
+
+// Register service worker for offline support
+if ("serviceWorker" in navigator) {
+  const swCode = `
+    const CACHE = "behavioral-log-v1";
+    const FONTS = [
+      "https://fonts.googleapis.com/css2?family=Lora:wght@400;600&family=DM+Sans:wght@300;400;500;600&display=swap"
+    ];
+    self.addEventListener("install", e => {
+      e.waitUntil(caches.open(CACHE).then(c => c.addAll(FONTS).catch(() => {})));
+      self.skipWaiting();
+    });
+    self.addEventListener("activate", e => {
+      e.waitUntil(caches.keys().then(keys =>
+        Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+      ));
+      self.clients.claim();
+    });
+    self.addEventListener("fetch", e => {
+      e.respondWith(
+        caches.match(e.request).then(cached => cached || fetch(e.request).catch(() => cached))
+      );
+    });
+  `;
+  const swBlob = new Blob([swCode], { type: "application/javascript" });
+  const swURL = URL.createObjectURL(swBlob);
+  navigator.serviceWorker.register(swURL, { scope: "/" })
+    .catch(() => {
+      // Service worker may not register from blob URL in all browsers — app still works fully
+    });
+}
+</script>
+</body>
+</html>
