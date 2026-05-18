@@ -352,6 +352,11 @@
         <div class="export-card-label">Word</div>
         <div class="export-card-sub">.doc file</div>
       </div>
+      <div class="export-card" onclick="exportClipboard()" style="grid-column: span 3;">
+        <div class="export-card-icon">📋</div>
+        <div class="export-card-label">Copy to Clipboard</div>
+        <div class="export-card-sub">Paste into email, notes, or any app</div>
+      </div>
     </div>
     <div class="export-note">All entries across all dates will be included, sorted by date. CSV opens in Excel or Google Sheets. PDF opens a print dialog. Word opens in Microsoft Word or Google Docs.</div>
   </div>
@@ -946,6 +951,66 @@ function allEntriesSorted() {
     ...notes.map(n => n.date)
   ])].sort();
   return allDates;
+}
+
+function exportClipboard() {
+  const dates = allEntriesSorted();
+  let text = `BEHAVIORAL LOG\nExported ${new Date().toLocaleDateString()}\n${incidents.length} incidents · ${envFactors.length} environmental factors · ${notes.length} notes\n\n`;
+
+  if (dates.length === 0) {
+    text += "No entries recorded yet.";
+  }
+
+  for (const date of dates) {
+    const envs = envFactors.filter(e => e.date === date);
+    const incs = incidents.filter(e => e.date === date);
+    const dayNotes = notes.filter(n => n.date === date);
+    if (!envs.length && !incs.length && !dayNotes.length) continue;
+
+    text += `${"─".repeat(40)}\n${fmtDate(date)}\n${"─".repeat(40)}\n\n`;
+
+    for (const e of envs) {
+      text += `[ENV] ${e.categories&&e.categories.length ? e.categories.join(", ") : "Environmental Factor"}\n`;
+      if (e.time) text += `Time: ${e.time}\n`;
+      if (e.primaryAffected&&e.primaryAffected.length) text += `Primarily Affected: ${e.primaryAffected.join(", ")}\n`;
+      if (e.description) text += `Description: ${e.description}\n`;
+      if (e.caregiverAction) text += `Caregiver Action: ${e.caregiverAction}\n`;
+      text += "\n";
+    }
+
+    for (const e of incs) {
+      text += `[INC] ${e.children&&e.children.length ? e.children.join(" & ") : "—"}\n`;
+      if (e.time) text += `Time: ${e.time}\n`;
+      if (e.severity) text += `Severity: ${e.severity}\n`;
+      if (e.primaryAffected&&e.primaryAffected.length) text += `Primarily Affected: ${e.primaryAffected.join(", ")}\n`;
+      if (e.incident) text += `Incident: ${e.incident}\n`;
+      if (e.trigger) text += `Trigger: ${e.trigger}\n`;
+      if (e.response) text += `Response: ${e.response}\n`;
+      if (e.outcome) text += `Outcome: ${e.outcome}\n`;
+      text += "\n";
+    }
+
+    for (const n of dayNotes) {
+      text += `[NOTE]${n.time ? ` ${n.time}` : ""}\n${n.text}\n\n`;
+    }
+  }
+
+  navigator.clipboard.writeText(text).then(() => {
+    closeExport();
+    alert("✓ All data copied to clipboard! Paste it anywhere.");
+  }).catch(() => {
+    // Fallback for browsers that block clipboard
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    closeExport();
+    alert("✓ All data copied to clipboard! Paste it anywhere.");
+  });
 }
 
 function exportCSV() {
